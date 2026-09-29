@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Equivalent shell script for running the parallel commands from the batch script.
+cargo run --bin gameserver 
+cargo run --bin sdkserver 
+
+wait
