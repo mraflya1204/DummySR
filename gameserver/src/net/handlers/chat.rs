@@ -1,4 +1,4 @@
-use common::structs::MultiPathAvatar;
+use common::structs::{EnemyOverride, MultiPathAvatar};
 use proto::chat_data::ExtendType;
 use std::path::Path;
 use tokio::fs;
@@ -14,6 +14,8 @@ const SERVER_UID: u32 = 727;
 const SERVER_HEAD_ICON: u32 = 201402;
 const SERVER_CHAT_BUBBLE_ID: u32 = 220005;
 const SERVER_CHAT_HISTORY: &[&str] = &[
+    "'enemy reset' clear all enemy overrides, 'enemy' shows current ones",
+    "'enemy {hp/hppct/level/elite/hardlevel} {value/off}' override enemy stats for the next battle",
     "'lua {path_to_lua_script}' execute lua script",
     "'sw {on/off}' enable/disable silver wolf global buff",
     "'castorice {on/off}' enable/disable castorice global buff",
@@ -301,9 +303,70 @@ pub async fn on_send_msg_cs_req(
                     .await
                     .unwrap();
             }
+            "enemy" => {
+                let reply = edit_enemy_override(&mut json.enemy_override, &args);
+                json.save_persistent().await;
+
+                session
+                    .send(create_send_message(
+                        25,
+                        SERVER_UID,
+                        body.message_datas
+                            .as_ref()
+                            .map(|v| v.message_type)
+                            .unwrap_or_default(),
+                        body.chat_type,
+                        reply,
+                    ))
+                    .await
+                    .unwrap();
+            }
             _ => {}
         }
     }
+}
+
+/// `enemy` chat command. Takes effect on the next battle.
+///   enemy                show current overrides
+///   enemy hp 5000000     max HP for every enemy
+///   enemy hppct 50       start enemies at 50% HP (needs a max HP)
+///   enemy level 95       enemy level
+///   enemy elite 3        EliteGroup id
+///   enemy hardlevel 1    HardLevelGroup id
+///   enemy hp off         clear one override (0 also works)
+///   enemy reset          clear all overrides
+fn edit_enemy_override(o: &mut EnemyOverride, args: &[&str]) -> String {
+    let Some(key) = args.first().map(|k| k.to_lowercase()) else {
+        return format!("Enemy: {o}");
+    };
+
+    let slot = match key.as_str() {
+        "reset" => {
+            *o = EnemyOverride::default();
+            return String::from("Enemy overrides cleared");
+        }
+        "hp" => &mut o.max_hp,
+        "hppct" => &mut o.hp_percent,
+        "level" | "lv" => &mut o.level,
+        "elite" => &mut o.elite_group,
+        "hardlevel" => &mut o.hard_level_group,
+        _ => {
+            return String::from(
+                "Usage: enemy [hp|hppct|level|elite|hardlevel] <number|off>, or enemy reset",
+            );
+        }
+    };
+
+    match args.get(1).map(|v| v.to_lowercase()) {
+        None => return format!("Missing value. Example: enemy {key} <number>"),
+        Some(v) if v == "off" || v == "0" => *slot = None,
+        Some(v) => match v.parse::<u32>() {
+            Ok(n) => *slot = Some(n),
+            Err(_) => return format!("'{v}' is not a number"),
+        },
+    }
+
+    format!("Enemy: {o} (applies from the next battle)")
 }
 
 fn parse_command(command: &str) -> Option<(&str, Vec<&str>)> {

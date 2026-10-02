@@ -1,8 +1,79 @@
 use std::collections::{BTreeMap, HashMap};
 
+use proto::SceneMonsterWave;
 use serde::{Deserialize, Serialize};
 
 use super::{monster::Monster, relic::SubAffix};
+
+// ENEMY OVERRIDES
+/// Enemy stat overrides, set with the `enemy` chat command and stored in `persistent`
+/// (not in freesr-data.json, so saving from SRTools doesn't wipe them).
+/// `None` means "leave whatever SRTools / the stage config says".
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(default)]
+pub struct EnemyOverride {
+    /// Max HP for every enemy, as an absolute number.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_hp: Option<u32>,
+    /// Starting HP as a percentage of max HP. Only applied when a max HP is known
+    /// (from `max_hp` above or from SRTools' per-monster HP).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hp_percent: Option<u32>,
+    /// Enemy level for every wave.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub level: Option<u32>,
+    /// Row id in the game's EliteGroup table (ATK/DEF/HP/SPD ratios).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub elite_group: Option<u32>,
+    /// Row id in the game's HardLevelGroup table (how stats scale with level).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hard_level_group: Option<u32>,
+}
+
+impl EnemyOverride {
+    pub fn apply(&self, waves: &mut [SceneMonsterWave]) {
+        for wave in waves.iter_mut() {
+            let param = wave.monster_param.get_or_insert_with(Default::default);
+            if let Some(level) = self.level {
+                param.level = level;
+            }
+            if let Some(group) = self.elite_group {
+                param.elite_group = group;
+            }
+            if let Some(group) = self.hard_level_group {
+                param.hard_level_group = group;
+            }
+
+            for monster in wave.monster_list.iter_mut() {
+                if let Some(hp) = self.max_hp {
+                    monster.max_hp = hp;
+                    monster.cur_hp = hp;
+                }
+                if let Some(pct) = self.hp_percent {
+                    if monster.max_hp > 0 {
+                        let cur = monster.max_hp as u64 * pct.clamp(1, 100) as u64 / 100;
+                        monster.cur_hp = cur.max(1) as u32;
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for EnemyOverride {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let show = |v: Option<u32>| v.map_or(String::from("default"), |v| v.to_string());
+        write!(
+            f,
+            "hp={} hppct={} level={} elite={} hardlevel={}",
+            show(self.max_hp),
+            show(self.hp_percent),
+            show(self.level),
+            show(self.elite_group),
+            show(self.hard_level_group)
+        )
+    }
+}
 
 // BATTLE CONFIG
 #[derive(Debug, Serialize, Deserialize, Clone)]

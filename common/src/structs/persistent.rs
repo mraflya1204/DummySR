@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     avatar::MultiPathAvatar,
+    battle::EnemyOverride,
     scene::{Position, Scene},
 };
 
@@ -47,6 +48,8 @@ pub struct Persistent {
     pub enable_sw_global: Option<bool>,
     #[serde(default = "default_true")]
     pub enable_castorice_global: Option<bool>,
+    #[serde(default)]
+    pub enemy_override: EnemyOverride,
 }
 
 fn default_true() -> Option<bool> {
@@ -65,6 +68,7 @@ impl Default for Persistent {
             // voice_language: AllowedLanguages::Jp,
             enable_sw_global: Some(true),
             enable_castorice_global: Some(true),
+            enemy_override: Default::default(),
         }
     }
 }
