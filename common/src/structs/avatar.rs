@@ -10,6 +10,12 @@ use crate::sr_tools::FreesrData;
 
 use super::{lightcone::Lightcone, relic::Relic};
 
+/// Character type sent in the battle setup. RobinSR has always used `AvatarUpgradeAvailableType`.
+/// The client then leaves the per-character damage in its end-of-battle statistics at zero; try
+/// `AvatarType::AvatarFormalType` to see whether it fills them in (the damage report picks them
+/// up automatically). Switch back if anything about battles breaks.
+pub const BATTLE_AVATAR_TYPE: AvatarType = AvatarType::AvatarUpgradeAvailableType;
+
 #[derive(Serialize, Deserialize, Clone, Debug, Copy, PartialEq, Eq, Default)]
 #[repr(u32)]
 pub enum MultiPathAvatar {
@@ -223,7 +229,7 @@ impl AvatarJson {
     ) -> (BattleAvatar, Vec<BattleBuff>) {
         let battle_avatar = BattleAvatar {
             index,
-            avatar_type: AvatarType::AvatarUpgradeAvailableType.into(),
+            avatar_type: BATTLE_AVATAR_TYPE.into(),
             id: self.avatar_id,
             level: self.level,
             rank: self.data.rank,

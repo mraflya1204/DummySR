@@ -5,6 +5,39 @@ use serde::{Deserialize, Serialize};
 
 use super::{monster::Monster, relic::SubAffix};
 
+// PEARL
+/// How Pearl's technique buff is attached at battle start. Her technique marks the active
+/// character ("Aesthetic Archetype"), who gets Deep Learning while Pearl gets 20 Certified Banger;
+/// it isn't known which layout the client expects, so it can be switched in-game with `pearl`.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum PearlMode {
+    /// Owned by Pearl and aimed at the active character (`target_index_list`).
+    #[default]
+    Target,
+    /// Owned by the active character.
+    Active,
+    /// Owned by Pearl, plus buff 1000121 on the active character: the same marker the server
+    /// uses for Dahlia's dance partner.
+    Marker,
+    /// Owned by Pearl, nothing else (what upstream RobinSR did).
+    #[serde(rename = "self")]
+    Pearl,
+}
+
+impl PearlMode {
+    pub const ALL: [PearlMode; 4] = [Self::Target, Self::Active, Self::Marker, Self::Pearl];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Target => "target",
+            Self::Active => "active",
+            Self::Marker => "marker",
+            Self::Pearl => "self",
+        }
+    }
+}
+
 // ENEMY OVERRIDES
 /// Enemy stat overrides, set with the `enemy` chat command and stored in `persistent`
 /// (not in freesr-data.json, so saving from SRTools doesn't wipe them).

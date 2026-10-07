@@ -4,7 +4,7 @@ use rand::RngExt;
 
 use common::{
     resources::GAME_RES,
-    structs::{BattleType, Monster},
+    structs::{BattleType, Monster, PearlMode},
 };
 
 use super::*;
@@ -114,10 +114,14 @@ pub async fn on_scene_cast_skill_cs_req(
 
 /// Technique buffs that go to the character you control when the battle starts (the "active
 /// character"), not to the character whose technique it is.
-///   141202 Cerydra, 141403 Dan Heng PT,
-///   150301 Pearl: her technique's "Aesthetic Archetype" sits on the active character, who gets
-///          Deep Learning at the start of the fight.
-const ACTIVE_CHARACTER_TECHNIQUE_BUFFS: &[u32] = &[141202, 141403, 150301];
+///   141202 Cerydra, 141403 Dan Heng PT.
+/// Pearl's technique buff is handled separately, see `PearlMode`.
+const ACTIVE_CHARACTER_TECHNIQUE_BUFFS: &[u32] = &[141202, 141403];
+
+/// Pearl's technique buff ("Aesthetic Archetype" on the active character).
+const PEARL_TECHNIQUE_BUFF: u32 = 150301;
+/// Marker buff the server already puts on Dahlia's dance partner.
+const ACTIVE_CHARACTER_MARKER_BUFF: u32 = 1000121;
 
 /// Opener buff (the hit that starts a fight) for a character. Comes from res.json; characters
 /// newer than res.json fall back to the buff for their element:
@@ -266,6 +270,15 @@ async fn create_battle_info(
             continue;
         }
 
+        if buff.id == PEARL_TECHNIQUE_BUFF {
+            match player.pearl_mode {
+                PearlMode::Target => buff.target_index_list = vec![active_idx],
+                PearlMode::Active => buff.owner_index = active_idx,
+                PearlMode::Marker | PearlMode::Pearl => {}
+            }
+            continue;
+        }
+
         // this is actually useless because there is 0 attack buff id in calyx but idc
         if has_dahlia
             && is_calyx
@@ -303,6 +316,25 @@ async fn create_battle_info(
 
     if !dahlia_buffs.is_empty() {
         battle_info.buff_list.extend(dahlia_buffs);
+    }
+
+    if player.pearl_mode == PearlMode::Marker
+        && battle_info
+            .buff_list
+            .iter()
+            .any(|b| b.id == PEARL_TECHNIQUE_BUFF)
+        && !battle_info
+            .buff_list
+            .iter()
+            .any(|b| b.id == ACTIVE_CHARACTER_MARKER_BUFF)
+    {
+        battle_info.buff_list.push(BattleBuff {
+            id: ACTIVE_CHARACTER_MARKER_BUFF,
+            level: 1,
+            wave_flag: u32::MAX,
+            target_index_list: vec![active_idx],
+            ..Default::default()
+        });
     }
 
     // custom stats for avatars

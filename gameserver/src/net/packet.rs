@@ -135,7 +135,15 @@ macro_rules! trait_handler {
                         }
                     )*
                     _ => {
-                        tracing::warn!("Unknown command ID: {cmd_id}");
+                        // The body helps identify the message: `protoc --decode_raw` on these bytes
+                        // shows its field numbers and values.
+                        let shown = &payload[..payload.len().min(64)];
+                        let hex: String = shown.iter().map(|b| format!("{b:02x}")).collect();
+                        tracing::warn!(
+                            "Unknown command ID: {cmd_id} ({} bytes) {hex}{}",
+                            payload.len(),
+                            if payload.len() > shown.len() { "..." } else { "" }
+                        );
                         Ok(())
                     },
                 }

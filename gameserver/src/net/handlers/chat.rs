@@ -1,4 +1,4 @@
-use common::structs::{EnemyOverride, MultiPathAvatar};
+use common::structs::{EnemyOverride, MultiPathAvatar, PearlMode};
 use proto::chat_data::ExtendType;
 use std::path::Path;
 use tokio::fs;
@@ -14,6 +14,7 @@ const SERVER_UID: u32 = 727;
 const SERVER_HEAD_ICON: u32 = 201402;
 const SERVER_CHAT_BUBBLE_ID: u32 = 220005;
 const SERVER_CHAT_HISTORY: &[&str] = &[
+    "'pearl {target/active/marker/self}' how Pearl's technique buff is attached (try them in turn)",
     "'enemy reset' clear all enemy overrides, 'enemy' shows current ones",
     "'enemy {hp/hppct/level/elite/hardlevel} {value/off}' override enemy stats for the next battle",
     "'lua {path_to_lua_script}' execute lua script",
@@ -315,6 +316,40 @@ pub async fn on_send_msg_cs_req(
                             .unwrap_or_default(),
                         body.chat_type,
                         format!("Executed {path:?}"),
+                    ))
+                    .await
+                    .unwrap();
+            }
+            "pearl" => {
+                let reply = match args.first().map(|v| v.to_lowercase()) {
+                    None => format!(
+                        "Pearl mode: {} (options: target, active, marker, self)",
+                        json.pearl_mode.name()
+                    ),
+                    Some(arg) => match PearlMode::ALL.into_iter().find(|m| m.name() == arg) {
+                        Some(mode) => {
+                            json.pearl_mode = mode;
+                            json.save_persistent().await;
+                            format!(
+                                "Pearl mode: {} (next battle: check Pearl's Certified Banger \
+                                 and Deep Learning on the character you control)",
+                                mode.name()
+                            )
+                        }
+                        None => String::from("Usage: pearl target|active|marker|self"),
+                    },
+                };
+
+                session
+                    .send(create_send_message(
+                        25,
+                        SERVER_UID,
+                        body.message_datas
+                            .as_ref()
+                            .map(|v| v.message_type)
+                            .unwrap_or_default(),
+                        body.chat_type,
+                        reply,
                     ))
                     .await
                     .unwrap();

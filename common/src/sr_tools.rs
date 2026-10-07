@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, HashMap};
 use crate::structs::{
     // AllowedLanguages,
     avatar::{AvatarJson, MultiPathAvatar},
-    battle::{BattleConfig, EnemyOverride},
+    battle::{BattleConfig, EnemyOverride, PearlMode},
     lightcone::Lightcone,
     persistent::Persistent,
     relic::Relic,
@@ -37,6 +37,8 @@ pub struct FreesrData {
     pub enable_castorice_global: Option<bool>,
     #[serde(skip_serializing, skip_deserializing)]
     pub enemy_override: EnemyOverride,
+    #[serde(skip_serializing, skip_deserializing)]
+    pub pearl_mode: PearlMode,
 }
 
 impl FreesrData {
@@ -86,6 +88,7 @@ impl FreesrData {
         freesr_data.enable_sw_global = persistent.enable_sw_global;
         freesr_data.enable_castorice_global = persistent.enable_castorice_global;
         freesr_data.enemy_override = persistent.enemy_override;
+        freesr_data.pearl_mode = persistent.pearl_mode;
         // freesr_data.game_language = persistent.game_language;
         // freesr_data.voice_langauge = persistent.voice_language;
 
@@ -153,6 +156,7 @@ impl FreesrData {
             enable_sw_global: self.enable_sw_global,
             enable_castorice_global: self.enable_castorice_global,
             enemy_override: self.enemy_override.clone(),
+            pearl_mode: self.pearl_mode,
             // game_language: self.game_language,
             // voice_language: self.voice_langauge,
         }) {
