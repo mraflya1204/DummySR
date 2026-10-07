@@ -85,3 +85,33 @@ pub fn replace_strings(bytecode: &[u8], replacements: &[(&str, &str)]) -> Result
 
     Ok(out)
 }
+
+/// Returns a copy of `bytecode` with the instruction sequence `find` overwritten by `replace`
+/// (same number of 32-bit words). The sequence must occur exactly once, so an edit can't land on
+/// the wrong spot if the payload changes.
+pub fn replace_code(bytecode: &[u8], find: &[u32], replace: &[u32]) -> Result<Vec<u8>> {
+    if find.is_empty() || find.len() != replace.len() {
+        bail!("find and replace must be non-empty and the same length");
+    }
+
+    let needle: Vec<u8> = find.iter().flat_map(|word| word.to_le_bytes()).collect();
+    let mut hits = bytecode
+        .windows(needle.len())
+        .enumerate()
+        .filter(|(_, window)| *window == needle.as_slice())
+        .map(|(at, _)| at);
+
+    let at = hits
+        .next()
+        .ok_or_else(|| anyhow!("instruction sequence not found in bytecode"))?;
+    if hits.next().is_some() {
+        bail!("instruction sequence found more than once in bytecode");
+    }
+
+    let mut out = bytecode.to_vec();
+    for (k, word) in replace.iter().enumerate() {
+        out[at + 4 * k..at + 4 * k + 4].copy_from_slice(&word.to_le_bytes());
+    }
+
+    Ok(out)
+}
