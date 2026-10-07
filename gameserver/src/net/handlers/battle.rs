@@ -45,13 +45,44 @@ pub async fn on_scene_enter_stage_cs_req(
     res.battle_info = Some(battle_info);
 }
 
+/// Full statistics of the last battle, overwritten each time; for checking the report by hand.
+const LAST_BATTLE_STATS_PATH: &str = "last_battle_stats.txt";
+
 pub async fn on_pve_battle_result_cs_req(
-    _session: &mut PlayerSession,
+    session: &mut PlayerSession,
     req: &PveBattleResultCsReq,
     res: &mut PveBattleResultScRsp,
 ) {
     res.end_status = req.end_status;
     res.battle_id = req.battle_id;
+
+    let Some(stats) = &req.stt else {
+        tracing::warn!("battle ended without statistics, no damage report");
+        return;
+    };
+
+    let report = damage_report::build(stats, req.end_status);
+    let enemy_taken = damage_report::enemy_damage_taken(stats);
+    for line in report.lines() {
+        tracing::info!("{line}");
+    }
+    tracing::info!("(cross-check) damage taken by enemies: {enemy_taken:.0}");
+
+    let raw = format!(
+        "battle {} | stage {} | battle_id {} | cost_time {}\n\
+         damage taken by enemies: {enemy_taken:.0}\n\n{report}\n\n{stats:#?}\n",
+        damage_report::status_label(req.end_status),
+        req.stage_id,
+        req.battle_id,
+        req.cost_time,
+    );
+    if let Err(err) = tokio::fs::write(LAST_BATTLE_STATS_PATH, raw).await {
+        tracing::warn!("failed to write {LAST_BATTLE_STATS_PATH}: {err}");
+    }
+
+    if let Err(err) = send_server_message(session, report).await {
+        tracing::warn!("failed to send damage report to chat: {err}");
+    }
 }
 
 pub async fn on_scene_cast_skill_cs_req(

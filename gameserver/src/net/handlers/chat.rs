@@ -379,6 +379,22 @@ fn parse_command(command: &str) -> Option<(&str, Vec<&str>)> {
     Some((parts[0], parts[1..].to_vec()))
 }
 
+/// Sends `text` to the player as a private message from the Server friend.
+pub async fn send_server_message(session: &PlayerSession, text: String) -> Result<()> {
+    const CHAT_TYPE_PRIVATE: i32 = 1;
+    const MSG_TYPE_CUSTOM_TEXT: i32 = 1;
+
+    session
+        .send(create_send_message(
+            25,
+            SERVER_UID,
+            MSG_TYPE_CUSTOM_TEXT,
+            CHAT_TYPE_PRIVATE,
+            text,
+        ))
+        .await
+}
+
 fn create_send_message(
     to: u32,
     from: u32,

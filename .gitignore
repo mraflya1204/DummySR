@@ -4,3 +4,4 @@ Cargo.lock
 /assets
 .vscode
 .prebuilt
+last_battle_stats.txt

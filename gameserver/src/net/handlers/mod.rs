@@ -2,6 +2,7 @@ mod authentication;
 mod avatar;
 mod battle;
 mod chat;
+mod damage_report;
 mod gacha;
 mod inventory;
 mod lineup;
