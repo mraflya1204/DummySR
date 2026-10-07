@@ -1,5 +1,6 @@
 use anyhow::Result;
 
+mod luau;
 mod net;
 mod util;
 
