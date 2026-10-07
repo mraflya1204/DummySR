@@ -200,6 +200,7 @@ async fn load_scene(
     is_enter_scene: bool,
     teleport_id: Option<u32>,
 ) -> Result<SceneInfo> {
+    let leader_slot = session.leader_slot;
     let Some(json) = session.json_data.get_mut() else {
         tracing::error!("data is not set!");
         return Err(anyhow::format_err!("data is not set!"));
@@ -246,7 +247,7 @@ async fn load_scene(
         plane_id,
         entry_id,
         game_mode_type: scene.plane_type,
-        leader_entity_id: 1,
+        leader_entity_id: effective_leader_slot(&json.lineups, leader_slot) + 1,
         world_id: if scene.world_id == 100 {
             501
         } else {

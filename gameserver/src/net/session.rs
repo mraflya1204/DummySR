@@ -34,6 +34,9 @@ pub struct PlayerSession {
     pub shutdown_rx: watch::Receiver<()>,
     pub json_data: OnceLock<FreesrData>,
     pub next_scene_save: u64,
+    /// Lineup slot of the character the player controls in the overworld. Starts at 0 each
+    /// login, matching what the server tells the client.
+    pub leader_slot: u32,
 }
 
 impl PlayerSession {
@@ -52,6 +55,7 @@ impl PlayerSession {
             shutdown_rx,
             shutdown_tx,
             next_scene_save: 0,
+            leader_slot: 0,
         }
     }
 

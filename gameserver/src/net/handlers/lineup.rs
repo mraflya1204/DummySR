@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use common::structs::AvatarJson;
 use scene_entity_info::Entity;
 use scene_entity_refresh_info::RefreshType;
@@ -20,6 +22,7 @@ pub async fn on_get_all_lineup_data_cs_req(
         mp: 5,
         max_mp: 5,
         avatar_list: AvatarJson::to_lineup_avatars(player),
+        leader_slot: effective_leader_slot(&player.lineups, session.leader_slot),
         ..Default::default()
     }];
 }
@@ -42,6 +45,7 @@ pub async fn on_get_cur_lineup_data_cs_req(
         avatar_list: AvatarJson::to_lineup_avatars(player),
         is_virtual: false,
         plane_id: 0,
+        leader_slot: effective_leader_slot(&player.lineups, session.leader_slot),
         ..Default::default()
     };
 
@@ -69,6 +73,8 @@ pub async fn on_replace_lineup_cs_req(
     req: &ReplaceLineupCsReq,
     _res: &mut ReplaceLineupScRsp,
 ) {
+    session.leader_slot = req.leader_slot;
+
     let Some(player) = session.json_data.get_mut() else {
         tracing::error!("data is not set!");
         return;
@@ -94,6 +100,7 @@ pub async fn on_quit_lineup_cs_req(
 }
 
 async fn refresh_lineup(session: &mut PlayerSession) {
+    let leader_slot = session.leader_slot;
     let Some(player) = session.json_data.get_mut() else {
         tracing::error!("data is not set!");
         return;
@@ -105,6 +112,7 @@ async fn refresh_lineup(session: &mut PlayerSession) {
         avatar_list: AvatarJson::to_lineup_avatars(player),
         max_mp: 5,
         mp: 5,
+        leader_slot: effective_leader_slot(&player.lineups, leader_slot),
         ..Default::default()
     };
 
@@ -154,9 +162,21 @@ async fn refresh_lineup(session: &mut PlayerSession) {
 }
 
 pub async fn on_change_lineup_leader_cs_req(
-    _session: &mut PlayerSession,
+    session: &mut PlayerSession,
     body: &ChangeLineupLeaderCsReq,
     res: &mut ChangeLineupLeaderScRsp,
 ) {
+    session.leader_slot = body.slot;
     res.slot = body.slot;
+}
+
+/// `wanted` if that slot has a character in it, otherwise the first occupied slot (or 0).
+pub fn effective_leader_slot(lineup: &BTreeMap<u32, u32>, wanted: u32) -> u32 {
+    if lineup.get(&wanted).is_some_and(|id| *id != 0) {
+        return wanted;
+    }
+    lineup
+        .iter()
+        .find(|(_, id)| **id != 0)
+        .map_or(0, |(slot, _)| *slot)
 }

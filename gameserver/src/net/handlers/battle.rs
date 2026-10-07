@@ -110,6 +110,27 @@ pub async fn on_scene_cast_skill_cs_req(
     res.battle_info = Some(battle_info);
 }
 
+/// Technique buffs that go to the character you control when the battle starts (the "active
+/// character"), not to the character whose technique it is.
+///   141202 Cerydra, 141403 Dan Heng PT,
+///   151104 Pearl: "Deep Learning" for the ally holding Aesthetic Archetype. Her other technique
+///          buff is 151101; if Deep Learning lands on Pearl herself, swap 151104 for 151101.
+const ACTIVE_CHARACTER_TECHNIQUE_BUFFS: &[u32] = &[141202, 141403, 151104];
+
+/// Opener buff (the hit that starts a fight) for a character. Comes from res.json; characters
+/// newer than res.json fall back to the buff for their element:
+/// 1000111 Physical, ...112 Fire, ...113 Ice, ...114 Lightning, ...115 Wind, ...116 Quantum,
+/// ...117 Imaginary.
+fn weakness_buff_id(avatar_id: u32) -> Option<u32> {
+    if let Some(config) = GAME_RES.avatar_configs.get(&avatar_id) {
+        return Some(config.weakness_buff_id);
+    }
+    match avatar_id {
+        1511 => Some(1000113), // Pearl, Ice
+        _ => None,
+    }
+}
+
 async fn create_battle_info(
     session: &mut PlayerSession,
     caster_id: u32,
@@ -118,6 +139,12 @@ async fn create_battle_info(
     // if let Some(player) = session.json_data.get_mut() {
     //     let _ = player.refresh_persistent().await;
     // }
+
+    // Avatar entities are lineup slot + 1, so an attack tells us who is in control.
+    if (1..=4).contains(&caster_id) {
+        session.leader_slot = caster_id - 1;
+    }
+    let leader_slot = session.leader_slot;
 
     let Some(player) = session.json_data.get() else {
         tracing::error!("data is not set!");
@@ -138,14 +165,18 @@ async fn create_battle_info(
     let mut first_avatar_id = 0;
     let mut first_avatar_idx = 9999;
 
-    let lineup_uwu = if let Some(custom) = &player.battle_config.custom_battle_lineup {
-        custom.iter()
-    } else {
-        player.lineups.iter()
-    };
+    let battle_lineup = player
+        .battle_config
+        .custom_battle_lineup
+        .as_ref()
+        .unwrap_or(&player.lineups);
+
+    // Battle index of the active character; falls back to the first character if that slot is
+    // empty or not part of this battle's lineup.
+    let active_idx = effective_leader_slot(battle_lineup, leader_slot);
 
     // avatars
-    for (avatar_index, avatar_id) in lineup_uwu {
+    for (avatar_index, avatar_id) in battle_lineup {
         if first_avatar_id == 0 {
             first_avatar_id = *avatar_id;
             first_avatar_idx = *avatar_index;
@@ -183,11 +214,11 @@ async fn create_battle_info(
 
             if caster_id > 0
                 && *avatar_index == (caster_id - 1)
-                && let Some(avatar_config) = GAME_RES.avatar_configs.get(&avatar_id)
+                && let Some(opener_buff_id) = weakness_buff_id(avatar_id)
                 && !avatar.techniques.contains(&1000119)
             {
                 battle_info.buff_list.push(BattleBuff {
-                    id: avatar_config.weakness_buff_id,
+                    id: opener_buff_id,
                     level: 1,
                     owner_index: *avatar_index,
                     wave_flag: 0xffffffff,
@@ -218,13 +249,9 @@ async fn create_battle_info(
         };
     }
 
-    // Hardcoded Cerydra & Danheng PT technique
+    // Active-character technique buffs (Cerydra, Dan Heng PT, Pearl)
     // and hardcode dahlia dance partner to 1st in lineup
-    let first_avatar_attack_id = if let Some(c) = GAME_RES.avatar_configs.get(&first_avatar_id) {
-        c.weakness_buff_id
-    } else {
-        0
-    };
+    let first_avatar_attack_id = weakness_buff_id(first_avatar_id).unwrap_or(0);
 
     let len = battle_info.buff_list.len();
     let mut has_replaced = false;
@@ -232,8 +259,8 @@ async fn create_battle_info(
     for (i, buff) in battle_info.buff_list.iter_mut().enumerate() {
         let is_last = i == len - 1;
 
-        if buff.id == 141202 || buff.id == 141403 {
-            buff.owner_index = first_avatar_idx;
+        if ACTIVE_CHARACTER_TECHNIQUE_BUFFS.contains(&buff.id) {
+            buff.owner_index = active_idx;
             continue;
         }
 
