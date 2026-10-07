@@ -1,27 +1,96 @@
 //! Damage report for the end of a battle, built from the statistics the client sends in
-//! `PVEBattleResultCsReq`. The server never sees individual hits; these totals are the client's
-//! own bookkeeping.
+//! `PVEBattleResultCsReq`. Uses the same accounting as Veritas: every point of damage a character
+//! deals counts once (break damage included), and DMG per AV is damage divided by the total
+//! elapsed Action Value, for the team and for each character.
 
 use std::fmt::Write as _;
 
 use proto::{BattleEndStatus, BattleStatistics};
 
-/// Report text, one line per entry: header, Total DMG, DMG per AV, then one line per character.
-pub fn build(stats: &BattleStatistics, end_status: i32) -> String {
-    let mut characters: Vec<(u32, f64)> = stats
+/// The client stores elapsed AV in units of 10 AV; Veritas reads the same counter
+/// (`ElapsedActionDelay`) and multiplies it by 10.
+const AV_PER_DELAY_UNIT: f64 = 10.0;
+
+pub struct Report {
+    /// What the player sees.
+    pub text: String,
+    /// How the numbers were worked out, for the console and `last_battle_stats.txt`.
+    pub notes: Vec<String>,
+}
+
+enum BreakDamage {
+    None,
+    /// The characters' totals already contain it (their sum matches what enemies took).
+    Included,
+    /// The totals leave it out, so it was added to each character.
+    Added,
+    /// Can't tell (no enemy figures to compare with); totals used as reported.
+    Unverified,
+}
+
+pub fn build(stats: &BattleStatistics, end_status: i32) -> Report {
+    let mut notes = Vec::new();
+
+    let reported_total: f64 = stats
         .battle_avatar_list
         .iter()
-        .map(|avatar| (avatar.id, avatar.total_damage))
-        .collect();
-    characters.sort_by(|a, b| b.1.total_cmp(&a.1));
-
-    let total: f64 = characters.iter().map(|(_, damage)| damage).sum();
+        .map(|a| a.total_damage)
+        .fold(0.0, |sum, x| sum + x);
     let break_total: f64 = stats
         .battle_avatar_list
         .iter()
-        .map(|avatar| avatar.total_break_damage)
-        .sum();
+        .map(|a| a.total_break_damage)
+        .fold(0.0, |sum, x| sum + x);
+    let enemy_taken = enemy_damage_taken(stats);
+
+    let break_damage = if break_total <= 0.0 {
+        BreakDamage::None
+    } else if enemy_taken <= 0.0 {
+        BreakDamage::Unverified
+    } else if (enemy_taken - (reported_total + break_total)).abs()
+        < (enemy_taken - reported_total).abs()
+    {
+        BreakDamage::Added
+    } else {
+        BreakDamage::Included
+    };
+    notes.push(format!(
+        "characters' reported total {reported_total:.0}, break {break_total:.0}, \
+         enemies took {enemy_taken:.0}"
+    ));
+
+    let mut characters: Vec<(u32, f64)> = stats
+        .battle_avatar_list
+        .iter()
+        .map(|a| {
+            let damage = match break_damage {
+                BreakDamage::Added => a.total_damage + a.total_break_damage,
+                _ => a.total_damage,
+            };
+            (a.id, damage)
+        })
+        .collect();
+    characters.sort_by(|a, b| b.1.total_cmp(&a.1));
+    let total: f64 = characters
+        .iter()
+        .map(|(_, damage)| damage)
+        .fold(0.0, |sum, x| sum + x);
+
     let av = elapsed_av(stats);
+    notes.push(format!(
+        "total_delay_cumulate {} x {AV_PER_DELAY_UNIT} = {:.1} AV, round_cnt {}",
+        stats.total_delay_cumulate,
+        stats.total_delay_cumulate * AV_PER_DELAY_UNIT,
+        stats.round_cnt
+    ));
+    if let Some((value, false)) = av
+        && stats.round_cnt > 0
+        && value > 150.0 + 100.0 * f64::from(stats.round_cnt) + 1.0
+    {
+        notes.push(String::from(
+            "AV is higher than the cycle count allows; the AV conversion may be off",
+        ));
+    }
 
     let cycles = match stats.round_cnt {
         1 => String::from("1 cycle"),
@@ -48,12 +117,22 @@ pub fn build(stats: &BattleStatistics, end_status: i32) -> String {
             let _ = writeln!(out, "DMG per AV: n/a");
         }
     }
-    if break_total > 0.0 {
-        let _ = writeln!(
-            out,
-            "Break DMG (listed separately): {}",
-            grouped(break_total)
-        );
+    match break_damage {
+        BreakDamage::None => {}
+        BreakDamage::Included | BreakDamage::Added => {
+            let _ = writeln!(
+                out,
+                "Break DMG: {} (counted in the total)",
+                grouped(break_total)
+            );
+        }
+        BreakDamage::Unverified => {
+            let _ = writeln!(
+                out,
+                "Break DMG: {} (couldn't check if it's in the total)",
+                grouped(break_total)
+            );
+        }
     }
 
     for (id, damage) in &characters {
@@ -74,17 +153,19 @@ pub fn build(stats: &BattleStatistics, end_status: i32) -> String {
         );
     }
 
-    out.trim_end().to_string()
+    Report {
+        text: out.trim_end().to_string(),
+        notes,
+    }
 }
 
-/// Sum of the damage the enemies say they took. Logged next to the report as a cross-check:
-/// if it matches Total DMG plus Break DMG, break damage isn't part of the characters' totals.
-pub fn enemy_damage_taken(stats: &BattleStatistics) -> f64 {
+/// Sum of the damage the enemies say they took, used to check how break damage is reported.
+fn enemy_damage_taken(stats: &BattleStatistics) -> f64 {
     stats
         .monster_list
         .iter()
         .map(|monster| monster.total_damage_taken)
-        .sum()
+        .fold(0.0, |sum, x| sum + x)
 }
 
 pub fn status_label(end_status: i32) -> &'static str {
@@ -96,13 +177,13 @@ pub fn status_label(end_status: i32) -> &'static str {
     }
 }
 
-/// Action Value the fight lasted, and whether it's an estimate. The client reports it as
-/// `total_delay_cumulate` ("delay" is the game's internal name for AV). If that's missing, it's
-/// estimated from the cycle count (150 AV for the first cycle, 100 for each one after), which is
-/// an upper bound because the last cycle may not have finished.
+/// Action Value the fight lasted, and whether it's an estimate. Normally the client's elapsed
+/// counter (`total_delay_cumulate`, in units of 10 AV). If that's missing, it's estimated from the
+/// cycle count (150 AV for the first cycle, 100 for each one after), an upper bound because the
+/// last cycle may not have finished.
 fn elapsed_av(stats: &BattleStatistics) -> Option<(f64, bool)> {
     if stats.total_delay_cumulate > 0.0 {
-        Some((stats.total_delay_cumulate, false))
+        Some((stats.total_delay_cumulate * AV_PER_DELAY_UNIT, false))
     } else if stats.round_cnt > 0 {
         Some((150.0 + 100.0 * f64::from(stats.round_cnt - 1), true))
     } else {
@@ -220,6 +301,7 @@ fn avatar_name(id: u32) -> Option<&'static str> {
         1412 => "Cerydra",
         1413 => "Evernight",
         1414 => "Dan Heng PT",
+        1503 => "Pearl",
         1506 => "Silver Wolf LV.999",
         _ => return None,
     })

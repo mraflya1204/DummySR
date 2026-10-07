@@ -5,16 +5,19 @@ use super::*;
 // Bottom-left corner text, set by the Lua the client runs on every heartbeat.
 // Unity rich text: `\n` starts a new line.
 
-/// Upper text (upstream showed t.me/neonteam25 here). Empty hides it.
-const WATERMARK_TEXT: &str = "DummySR\nForked from RobinSR by NeonTeam";
+/// Upper text (upstream showed t.me/neonteam25 here). Empty hides it. Its box only fits one line
+/// at a large size, so put a second line in VERSION_TEXT instead of using `\n`.
+const WATERMARK_TEXT: &str = "DummySR";
 /// Lower line (upstream showed "RobinSR! | " plus the game version here). Empty hides it.
-const VERSION_TEXT: &str = "";
+const VERSION_TEXT: &str = "Forked from RobinSR by NeonTeam";
 /// true puts the game's version string after VERSION_TEXT, like upstream RobinSR.
 const SHOW_GAME_VERSION: bool = false;
 /// Color for both lines: "#RRGGBB" or "#RRGGBBAA". "" keeps the game's color.
 const TEXT_COLOR: &str = "#00e1ff";
-/// Font size for both lines. The game's default here is roughly 16. 0 keeps the default.
-const FONT_SIZE: u32 = 28;
+/// Font sizes. The game's default here is roughly 16; 0 keeps it. Too large and the text box
+/// cuts the line off.
+const WATERMARK_FONT_SIZE: u32 = 28;
+const VERSION_FONT_SIZE: u32 = 0;
 
 /// Precompiled Luau chunk the client runs on every heartbeat: sets the frame-rate target and
 /// rewrites the two corner texts. `build_heartbeat_payload` swaps its strings for the settings
@@ -28,7 +31,8 @@ static HEARTBEAT_PAYLOAD: LazyLock<Vec<u8>> = LazyLock::new(|| {
         version: VERSION_TEXT,
         show_game_version: SHOW_GAME_VERSION,
         color: TEXT_COLOR,
-        font_size: FONT_SIZE,
+        watermark_size: WATERMARK_FONT_SIZE,
+        version_size: VERSION_FONT_SIZE,
     };
 
     match build_heartbeat_payload(&original, &settings) {
@@ -45,14 +49,15 @@ struct CornerText<'a> {
     version: &'a str,
     show_game_version: bool,
     color: &'a str,
-    font_size: u32,
+    watermark_size: u32,
+    version_size: u32,
 }
 
 impl CornerText<'_> {
-    fn open_tags(&self) -> String {
+    fn open_tags(&self, size: u32) -> String {
         let mut tags = String::new();
-        if self.font_size > 0 {
-            tags += &format!("<size={}>", self.font_size);
+        if size > 0 {
+            tags += &format!("<size={size}>");
         }
         if !self.color.is_empty() {
             tags += &format!("<color={}>", self.color);
@@ -60,22 +65,22 @@ impl CornerText<'_> {
         tags
     }
 
-    fn close_tags(&self) -> String {
+    fn close_tags(&self, size: u32) -> String {
         let mut tags = String::new();
         if !self.color.is_empty() {
             tags += "</color>";
         }
-        if self.font_size > 0 {
+        if size > 0 {
             tags += "</size>";
         }
         tags
     }
 
-    fn styled(&self, text: &str) -> String {
+    fn styled(&self, text: &str, size: u32) -> String {
         if text.is_empty() {
             String::new()
         } else {
-            format!("{}{text}{}", self.open_tags(), self.close_tags())
+            format!("{}{text}{}", self.open_tags(size), self.close_tags(size))
         }
     }
 }
@@ -91,12 +96,12 @@ const AUX_KEY_TEXT: u32 = 0x0000_000e; // K14 ("text")
 const MOVE_R1_R2: u32 = 0x0002_0106; // R1 = R2
 
 fn build_heartbeat_payload(original: &[u8], text: &CornerText) -> anyhow::Result<Vec<u8>> {
-    let watermark = text.styled(text.watermark);
+    let watermark = text.styled(text.watermark, text.watermark_size);
 
     if text.show_game_version {
         // Keep the concatenation: [tags + VERSION_TEXT] .. "" .. version .. [closing tags]
-        let prefix = format!("{}{}", text.open_tags(), text.version);
-        let close = text.close_tags();
+        let prefix = format!("{}{}", text.open_tags(text.version_size), text.version);
+        let close = text.close_tags(text.version_size);
         return crate::luau::replace_strings(
             original,
             &[
@@ -110,7 +115,7 @@ fn build_heartbeat_payload(original: &[u8], text: &CornerText) -> anyhow::Result
 
     // Without the version, the line is exactly the styled VERSION_TEXT: R2 holds it and the
     // concatenation becomes a plain copy of R2.
-    let version_line = text.styled(text.version);
+    let version_line = text.styled(text.version, text.version_size);
     let patched = crate::luau::replace_strings(
         original,
         &[
@@ -147,10 +152,16 @@ pub async fn on_get_basic_info_cs_req(
 }
 
 pub async fn on_player_heart_beat_cs_req(
-    _session: &mut PlayerSession,
+    session: &mut PlayerSession,
     body: &PlayerHeartBeatCsReq,
     res: &mut PlayerHeartBeatScRsp,
 ) {
+    for text in std::mem::take(&mut session.pending_server_messages) {
+        if let Err(err) = send_server_message(session, text).await {
+            tracing::warn!("failed to send Server message: {err}");
+        }
+    }
+
     res.client_time_ms = body.client_time_ms;
     res.server_time_ms = body.client_time_ms;
     res.download_data = Some(ClientDownloadData {

@@ -62,27 +62,29 @@ pub async fn on_pve_battle_result_cs_req(
     };
 
     let report = damage_report::build(stats, req.end_status);
-    let enemy_taken = damage_report::enemy_damage_taken(stats);
-    for line in report.lines() {
+    for line in report.text.lines() {
         tracing::info!("{line}");
     }
-    tracing::info!("(cross-check) damage taken by enemies: {enemy_taken:.0}");
+    for note in &report.notes {
+        tracing::info!("(report) {note}");
+    }
 
     let raw = format!(
-        "battle {} | stage {} | battle_id {} | cost_time {}\n\
-         damage taken by enemies: {enemy_taken:.0}\n\n{report}\n\n{stats:#?}\n",
+        "battle {} | stage {} | battle_id {} | cost_time {}\n\n{}\n\n{}\n\n{stats:#?}\n",
         damage_report::status_label(req.end_status),
         req.stage_id,
         req.battle_id,
         req.cost_time,
+        report.text,
+        report.notes.join("\n"),
     );
     if let Err(err) = tokio::fs::write(LAST_BATTLE_STATS_PATH, raw).await {
         tracing::warn!("failed to write {LAST_BATTLE_STATS_PATH}: {err}");
     }
 
-    if let Err(err) = send_server_message(session, report).await {
-        tracing::warn!("failed to send damage report to chat: {err}");
-    }
+    // Sent with the next heartbeat: a chat message that arrives while the client is still
+    // leaving the battle doesn't show up.
+    session.queue_server_message(report.text);
 }
 
 pub async fn on_scene_cast_skill_cs_req(
@@ -113,9 +115,9 @@ pub async fn on_scene_cast_skill_cs_req(
 /// Technique buffs that go to the character you control when the battle starts (the "active
 /// character"), not to the character whose technique it is.
 ///   141202 Cerydra, 141403 Dan Heng PT,
-///   151104 Pearl: "Deep Learning" for the ally holding Aesthetic Archetype. Her other technique
-///          buff is 151101; if Deep Learning lands on Pearl herself, swap 151104 for 151101.
-const ACTIVE_CHARACTER_TECHNIQUE_BUFFS: &[u32] = &[141202, 141403, 151104];
+///   150301 Pearl: her technique's "Aesthetic Archetype" sits on the active character, who gets
+///          Deep Learning at the start of the fight.
+const ACTIVE_CHARACTER_TECHNIQUE_BUFFS: &[u32] = &[141202, 141403, 150301];
 
 /// Opener buff (the hit that starts a fight) for a character. Comes from res.json; characters
 /// newer than res.json fall back to the buff for their element:
@@ -126,7 +128,7 @@ fn weakness_buff_id(avatar_id: u32) -> Option<u32> {
         return Some(config.weakness_buff_id);
     }
     match avatar_id {
-        1511 => Some(1000113), // Pearl, Ice
+        1503 => Some(1000113), // Pearl, Ice
         _ => None,
     }
 }

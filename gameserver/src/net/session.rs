@@ -37,6 +37,12 @@ pub struct PlayerSession {
     /// Lineup slot of the character the player controls in the overworld. Starts at 0 each
     /// login, matching what the server tells the client.
     pub leader_slot: u32,
+    /// Messages from the Server friend waiting to be sent. They go out with the next heartbeat,
+    /// after the client has left the battle screen.
+    pub pending_server_messages: Vec<String>,
+    /// Recent messages from the Server friend (time in ms, text), oldest first. Shown again when
+    /// the chat with Server is opened.
+    pub server_message_log: Vec<(u64, String)>,
 }
 
 impl PlayerSession {
@@ -56,6 +62,8 @@ impl PlayerSession {
             shutdown_tx,
             next_scene_save: 0,
             leader_slot: 0,
+            pending_server_messages: Vec::new(),
+            server_message_log: Vec::new(),
         }
     }
 
@@ -204,6 +212,18 @@ impl PlayerSession {
             ..Default::default()
         })
         .await
+    }
+
+    /// Queues a message from the Server friend for the next heartbeat and keeps it in the chat
+    /// history (the last 10).
+    pub fn queue_server_message(&mut self, text: String) {
+        const KEEP: usize = 10;
+        self.server_message_log
+            .push((util::cur_timestamp_ms(), text.clone()));
+        if self.server_message_log.len() > KEEP {
+            self.server_message_log.remove(0);
+        }
+        self.pending_server_messages.push(text);
     }
 
     fn session_time(&self) -> u64 {

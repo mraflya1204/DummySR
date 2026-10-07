@@ -60,34 +60,50 @@ pub async fn on_get_friend_list_info_cs_req(
 }
 
 pub async fn on_get_private_chat_history_cs_req(
-    _session: &mut PlayerSession,
+    session: &mut PlayerSession,
     req: &GetPrivateChatHistoryCsReq,
     res: &mut GetPrivateChatHistoryScRsp,
 ) {
-    let cur_time = cur_timestamp_ms();
-    res.chat_message_list = SERVER_CHAT_HISTORY
+    // Newest first: recent Server messages (damage reports), then the command help, dated just
+    // before the oldest of them.
+    let help_time = session
+        .server_message_log
+        .first()
+        .map_or_else(cur_timestamp_ms, |(time, _)| time.saturating_sub(1000));
+    res.chat_message_list = session
+        .server_message_log
         .iter()
-        .map(|text| ChatMessageData {
-            create_time: cur_time,
-            ckhpffenobe: Some(Eknabklpeel {
-                kpobmnlklok: 1,
-                role_id: SERVER_UID,
-            }),
-            bkoalkhdlob: Some(Eknabklpeel {
-                kpobmnlklok: 1,
-                role_id: SERVER_UID,
-            }),
-            message_datas: vec![MessageChatData {
-                message_type: 1,
-                chat_data: Some(ChatData {
-                    extend_type: Some(ExtendType::MessageText(text.to_string())),
-                }),
-            }],
-            ..Default::default()
-        })
+        .rev()
+        .map(|(time, text)| server_chat_message(*time, text))
+        .chain(
+            SERVER_CHAT_HISTORY
+                .iter()
+                .map(|text| server_chat_message(help_time, text)),
+        )
         .collect();
     res.target_side = req.target_side;
     res.contact_side = SERVER_UID;
+}
+
+fn server_chat_message(create_time: u64, text: &str) -> ChatMessageData {
+    ChatMessageData {
+        create_time,
+        ckhpffenobe: Some(Eknabklpeel {
+            kpobmnlklok: 1,
+            role_id: SERVER_UID,
+        }),
+        bkoalkhdlob: Some(Eknabklpeel {
+            kpobmnlklok: 1,
+            role_id: SERVER_UID,
+        }),
+        message_datas: vec![MessageChatData {
+            message_type: 1,
+            chat_data: Some(ChatData {
+                extend_type: Some(ExtendType::MessageText(text.to_string())),
+            }),
+        }],
+        ..Default::default()
+    }
 }
 
 pub async fn on_send_msg_cs_req(
