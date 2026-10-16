@@ -1,4 +1,4 @@
-use common::structs::{EnemyOverride, MultiPathAvatar, PearlMode};
+use common::structs::{EnemyOverride, Monster, MultiPathAvatar, PearlMode};
 use proto::chat_data::ExtendType;
 use std::path::Path;
 use tokio::fs;
@@ -14,6 +14,7 @@ const SERVER_UID: u32 = 727;
 const SERVER_HEAD_ICON: u32 = 201402;
 const SERVER_CHAT_BUBBLE_ID: u32 = 220005;
 const SERVER_CHAT_HISTORY: &[&str] = &[
+    "'dummy {1-5} {monster_id}' one wave of copies of an enemy with 4 billion HP ('dummy off' to undo)",
     "'pearl {target/active/marker/self}' how Pearl's technique buff is attached (try them in turn)",
     "'enemy reset' clear all enemy overrides, 'enemy' shows current ones",
     "'enemy {hp/hppct/level/elite/hardlevel} {value/off}' override enemy stats for the next battle",
@@ -354,6 +355,28 @@ pub async fn on_send_msg_cs_req(
                     .await
                     .unwrap();
             }
+            "dummy" => {
+                let reply = edit_dummy(
+                    &mut json.enemy_override,
+                    &args,
+                    &json.battle_config.monsters,
+                );
+                json.save_persistent().await;
+
+                session
+                    .send(create_send_message(
+                        25,
+                        SERVER_UID,
+                        body.message_datas
+                            .as_ref()
+                            .map(|v| v.message_type)
+                            .unwrap_or_default(),
+                        body.chat_type,
+                        reply,
+                    ))
+                    .await
+                    .unwrap();
+            }
             "enemy" => {
                 let reply = edit_enemy_override(&mut json.enemy_override, &args);
                 json.save_persistent().await;
@@ -375,6 +398,83 @@ pub async fn on_send_msg_cs_req(
             _ => {}
         }
     }
+}
+
+/// HP for `dummy` enemies. The client accepts up to 4,294,967,295 (it's a 32-bit field).
+const DUMMY_HP: u32 = 4_000_000_000;
+
+/// `dummy` chat command: one wave of identical enemies with DUMMY_HP, for damage testing.
+///   dummy                show the current setting
+///   dummy 3              3 copies of the first enemy in freesr-data.json
+///   dummy 5 8012210      5 copies of enemy 8012210
+///   dummy off            back to the enemies from freesr-data.json (also clears the HP)
+fn edit_dummy(o: &mut EnemyOverride, args: &[&str], configured: &[Vec<Monster>]) -> String {
+    const USAGE: &str = "Usage: dummy 1-5 [monster_id], or dummy off";
+    let configured_first = configured
+        .iter()
+        .flatten()
+        .next()
+        .map(|m| m.monster_id.to_string());
+
+    match args.first().map(|v| v.to_lowercase()) {
+        None => match o.count {
+            Some(count) => format!(
+                "Dummy: {count} x {} with {} HP",
+                o.monster_id
+                    .map(|id| id.to_string())
+                    .or(configured_first)
+                    .unwrap_or_default(),
+                o.max_hp
+                    .map_or(String::from("default"), |hp| with_commas(u64::from(hp)))
+            ),
+            None => format!("Dummy is off. {USAGE}"),
+        },
+        Some(arg) if arg == "off" => {
+            o.count = None;
+            o.monster_id = None;
+            o.max_hp = None;
+            String::from("Dummy off: enemies and HP from freesr-data.json again")
+        }
+        Some(arg) => {
+            let Ok(count) = arg.parse::<u32>() else {
+                return String::from(USAGE);
+            };
+            if !(1..=EnemyOverride::MAX_COUNT).contains(&count) {
+                return String::from(USAGE);
+            }
+            let monster_id = match args.get(1) {
+                None => None,
+                Some(id) => match id.parse::<u32>() {
+                    Ok(id) if id > 0 => Some(id),
+                    _ => return format!("'{id}' is not a monster id. {USAGE}"),
+                },
+            };
+            o.count = Some(count);
+            o.monster_id = monster_id;
+            o.max_hp = Some(DUMMY_HP);
+            format!(
+                "Dummy: {count} x {} with {} HP (applies from the next battle)",
+                monster_id
+                    .map(|id| id.to_string())
+                    .or(configured_first)
+                    .unwrap_or_else(|| String::from("the default enemy")),
+                with_commas(u64::from(DUMMY_HP))
+            )
+        }
+    }
+}
+
+/// 4000000000 -> "4,000,000,000"
+fn with_commas(n: u64) -> String {
+    let digits = n.to_string();
+    let mut out = String::new();
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
 }
 
 /// `enemy` chat command. Takes effect on the next battle.

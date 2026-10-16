@@ -474,7 +474,9 @@ async fn create_battle_info(
     }
 
     // Monsters
-    battle_info.monster_wave_list = Monster::to_scene_monster_waves(&player.battle_config.monsters);
+    battle_info.monster_wave_list = Monster::to_scene_monster_waves(
+        &player.enemy_override.waves(&player.battle_config.monsters),
+    );
     player
         .enemy_override
         .apply(&mut battle_info.monster_wave_list);

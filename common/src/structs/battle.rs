@@ -61,9 +61,41 @@ pub struct EnemyOverride {
     /// Row id in the game's HardLevelGroup table (how stats scale with level).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hard_level_group: Option<u32>,
+    /// Replace the configured enemies with one wave of this many copies (1-5).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub count: Option<u32>,
+    /// Enemy to copy when `count` is set; defaults to the first configured enemy.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub monster_id: Option<u32>,
 }
 
 impl EnemyOverride {
+    /// Most enemies a wave holds.
+    pub const MAX_COUNT: u32 = 5;
+
+    /// The enemy waves to fight: one wave of `count` copies when set, otherwise the configured
+    /// waves unchanged. Copies keep the first configured enemy's level.
+    pub fn waves(&self, configured: &[Vec<Monster>]) -> Vec<Vec<Monster>> {
+        let Some(count) = self.count else {
+            return configured.to_vec();
+        };
+        let first = configured
+            .iter()
+            .flatten()
+            .next()
+            .cloned()
+            .unwrap_or_else(|| Monster {
+                level: 95,
+                monster_id: 3014022,
+                max_hp: 0,
+            });
+        let copy = Monster {
+            monster_id: self.monster_id.unwrap_or(first.monster_id),
+            ..first
+        };
+        vec![vec![copy; count.clamp(1, Self::MAX_COUNT) as usize]]
+    }
+
     pub fn apply(&self, waves: &mut [SceneMonsterWave]) {
         for wave in waves.iter_mut() {
             let param = wave.monster_param.get_or_insert_with(Default::default);
@@ -104,7 +136,16 @@ impl std::fmt::Display for EnemyOverride {
             show(self.level),
             show(self.elite_group),
             show(self.hard_level_group)
-        )
+        )?;
+        if let Some(count) = self.count {
+            write!(
+                f,
+                " dummy={count} x {}",
+                self.monster_id
+                    .map_or(String::from("first enemy"), |id| id.to_string())
+            )?;
+        }
+        Ok(())
     }
 }
 
