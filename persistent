@@ -1,0 +1,29 @@
+{
+  "lineups": {
+    "0": 1308,
+    "1": 1507,
+    "2": 1403,
+    "3": 1504
+  },
+  "position": {
+    "x": 674182,
+    "y": 75562,
+    "z": -16482,
+    "rot_y": 204639
+  },
+  "scene": {
+    "plane_id": 20511,
+    "floor_id": 20511001,
+    "entry_id": 2051101
+  },
+  "main_character": "FemaleElation",
+  "march_type": "MarchHunt",
+  "enable_sw_global": true,
+  "enable_castorice_global": true,
+  "enemy_override": {
+    "max_hp": 4000000000,
+    "count": 5
+  },
+  "pearl_mode": "marker",
+  "ex_rank_off": []
+}
