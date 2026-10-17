@@ -16,7 +16,6 @@ const SERVER_CHAT_BUBBLE_ID: u32 = 220005;
 const SERVER_CHAT_HISTORY: &[&str] = &[
     "'exrank {avatar_id/all} {on/off}' extra Eidolon for Jing Yuan, Dan Heng IL, Acheron ('exrank' lists them)",
     "'dummy {1-5} {monster_id}' one wave of copies of an enemy with 4 billion HP ('dummy off' to undo)",
-    "'pearl {target/active/marker/self}' how Pearl's technique buff is attached (try them in turn)",
     "'enemy reset' clear all enemy overrides, 'enemy' shows current ones",
     "'enemy {hp/hppct/level/elite/hardlevel} {value/off}' override enemy stats for the next battle",
     "'lua {path_to_lua_script}' execute lua script",
