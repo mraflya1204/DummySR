@@ -135,6 +135,22 @@ macro_rules! trait_handler {
                         }
                     )*
                     _ => {
+                        // No handler, but the game is waiting for a reply: answer with an empty
+                        // response, as ppSR does (see cmd_fallback.rs).
+                        if let Some((response_id, name)) = super::cmd_fallback::response_for(cmd_id) {
+                            tracing::info!(
+                                "No handler for {name}CsReq ({cmd_id}), sent an empty {name}ScRsp ({response_id})"
+                            );
+                            session
+                                .send_raw(NetPacket {
+                                    cmd_type: response_id,
+                                    head: Vec::new(),
+                                    body: Vec::new(),
+                                })
+                                .await?;
+                            return Ok(());
+                        }
+
                         // The body helps identify the message: `protoc --decode_raw` on these bytes
                         // shows its field numbers and values.
                         let shown = &payload[..payload.len().min(64)];

@@ -1,5 +1,6 @@
 pub mod gateway;
 
+mod cmd_fallback;
 mod handlers;
 mod packet;
 mod session;
