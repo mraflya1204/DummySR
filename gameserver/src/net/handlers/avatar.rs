@@ -60,6 +60,7 @@ pub async fn on_get_avatar_data_cs_req(
                     .iter()
                     .filter(|r| r.equip_avatar == avatar.avatar_id)
                     .collect(),
+                json.ex_rank_ids(avatar.avatar_id),
             )
         })
         .collect();

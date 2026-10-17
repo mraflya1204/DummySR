@@ -161,7 +161,11 @@ impl PlayerSession {
                     .avatars
                     .values()
                     .map(|avatar| {
-                        avatar.to_avatar_path_data_proto(Option::None, Vec::with_capacity(0))
+                        avatar.to_avatar_path_data_proto(
+                            Option::None,
+                            Vec::with_capacity(0),
+                            json.ex_rank_ids(avatar.avatar_id),
+                        )
                     })
                     .collect::<Vec<_>>(),
             }),
@@ -205,6 +209,7 @@ impl PlayerSession {
                                 .iter()
                                 .filter(|r| r.equip_avatar == avatar.avatar_id)
                                 .collect(),
+                            json.ex_rank_ids(avatar.avatar_id),
                         )
                     })
                     .collect::<Vec<_>>(),

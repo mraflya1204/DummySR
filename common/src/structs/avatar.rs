@@ -10,6 +10,15 @@ use crate::sr_tools::FreesrData;
 
 use super::{lightcone::Lightcone, relic::Relic};
 
+/// Extra Eidolons ("ex rank", beyond E6): (avatar id, ex rank id, name), from the game's
+/// AvatarExRankConfig. The ids go in the character's path data and battle setup; see
+/// `FreesrData::ex_rank_ids`.
+pub const EX_RANKS: &[(u32, u32, &str)] = &[
+    (1204, 120401, "Jing Yuan"),
+    (1213, 121301, "Dan Heng IL"),
+    (1308, 130801, "Acheron"),
+];
+
 /// Character type sent in the battle setup. RobinSR has always used `AvatarUpgradeAvailableType`.
 /// The client then leaves the per-character damage in its end-of-battle statistics at zero; try
 /// `AvatarType::AvatarFormalType` to see whether it fills them in (the damage report picks them
@@ -198,9 +207,13 @@ impl AvatarJson {
         &self,
         lightcone: Option<&Lightcone>,
         relics: Vec<&Relic>,
+        ex_rank_ids: Vec<u32>,
     ) -> AvatarPathData {
         AvatarPathData {
             avatar_id: self.avatar_id,
+            // `IGDEHGIKFJA` in StarRail.proto: the ex rank id list (named `ex_rank_id_list` in
+            // DisplayAvatarDetailInfo). Rename here if a proto update changes the obfuscated name.
+            igdehgikfja: ex_rank_ids,
             rank: self.data.rank,
             equip_relic_list: relics
                 .iter()

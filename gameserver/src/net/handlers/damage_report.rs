@@ -282,8 +282,18 @@ fn avatar_name(id: u32) -> Option<&'static str> {
         1412 => "Cerydra",
         1413 => "Evernight",
         1414 => "Dan Heng PT",
+        1415 => "Cyrene",
+        1501 => "Sparxie",
+        1502 => "Yao Guang",
         1503 => "Pearl",
+        1504 => "Ashveil",
+        1505 => "Evanescia",
         1506 => "Silver Wolf LV.999",
+        1507 => "Mortenax Blade",
+        1510 => "Himeko Nova",
+        1511 => "Aha",
+        1512 => "Robin (summer)",
+        1513 => "Aventurine (Waveflair)",
         _ => return None,
     })
 }

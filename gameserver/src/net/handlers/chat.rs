@@ -1,4 +1,4 @@
-use common::structs::{EnemyOverride, Monster, MultiPathAvatar, PearlMode};
+use common::structs::{EX_RANKS, EnemyOverride, Monster, MultiPathAvatar, PearlMode};
 use proto::chat_data::ExtendType;
 use std::path::Path;
 use tokio::fs;
@@ -14,6 +14,7 @@ const SERVER_UID: u32 = 727;
 const SERVER_HEAD_ICON: u32 = 201402;
 const SERVER_CHAT_BUBBLE_ID: u32 = 220005;
 const SERVER_CHAT_HISTORY: &[&str] = &[
+    "'exrank {avatar_id/all} {on/off}' extra Eidolon for Jing Yuan, Dan Heng IL, Acheron ('exrank' lists them)",
     "'dummy {1-5} {monster_id}' one wave of copies of an enemy with 4 billion HP ('dummy off' to undo)",
     "'pearl {target/active/marker/self}' how Pearl's technique buff is attached (try them in turn)",
     "'enemy reset' clear all enemy overrides, 'enemy' shows current ones",
@@ -355,6 +356,26 @@ pub async fn on_send_msg_cs_req(
                     .await
                     .unwrap();
             }
+            "exrank" => {
+                let reply = edit_ex_rank(&mut json.ex_rank_off, &args);
+                json.save_persistent().await;
+                // refresh the character screens with the new ex rank state
+                let _ = session.sync_player().await;
+
+                session
+                    .send(create_send_message(
+                        25,
+                        SERVER_UID,
+                        body.message_datas
+                            .as_ref()
+                            .map(|v| v.message_type)
+                            .unwrap_or_default(),
+                        body.chat_type,
+                        reply,
+                    ))
+                    .await
+                    .unwrap();
+            }
             "dummy" => {
                 let reply = edit_dummy(
                     &mut json.enemy_override,
@@ -398,6 +419,64 @@ pub async fn on_send_msg_cs_req(
             _ => {}
         }
     }
+}
+
+/// `exrank` chat command: turn ex ranks (extra Eidolons) on or off. All are on by default.
+///   exrank               list them
+///   exrank 1308 off      switch Acheron's off
+///   exrank all on        switch every one on
+fn edit_ex_rank(off: &mut Vec<u32>, args: &[&str]) -> String {
+    const USAGE: &str = "Usage: exrank [avatar_id|all] [on|off]";
+    let status = |off: &Vec<u32>| {
+        EX_RANKS
+            .iter()
+            .map(|(id, _, name)| {
+                format!(
+                    "{name} ({id}) {}",
+                    if off.contains(id) { "off" } else { "on" }
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+
+    let (Some(target), Some(state)) = (args.first(), args.get(1)) else {
+        return if args.is_empty() {
+            format!("Ex rank: {}", status(off))
+        } else {
+            String::from(USAGE)
+        };
+    };
+    let enable = match state.to_lowercase().as_str() {
+        "on" | "1" | "true" => true,
+        "off" | "0" | "false" => false,
+        _ => return String::from(USAGE),
+    };
+    let targets: Vec<u32> = if target.eq_ignore_ascii_case("all") {
+        EX_RANKS.iter().map(|(id, _, _)| *id).collect()
+    } else {
+        match target.parse::<u32>() {
+            Ok(id) if EX_RANKS.iter().any(|(a, _, _)| *a == id) => vec![id],
+            _ => {
+                return format!(
+                    "{target} has no ex rank. Characters with one: {}",
+                    EX_RANKS
+                        .iter()
+                        .map(|(id, _, name)| format!("{name} ({id})"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+            }
+        }
+    };
+
+    for id in targets {
+        off.retain(|v| *v != id);
+        if !enable {
+            off.push(id);
+        }
+    }
+    format!("Ex rank: {} (applies from the next battle)", status(off))
 }
 
 /// HP for `dummy` enemies. The client accepts up to 4,294,967,295 (it's a 32-bit field).

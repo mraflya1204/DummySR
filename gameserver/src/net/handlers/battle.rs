@@ -131,8 +131,14 @@ fn weakness_buff_id(avatar_id: u32) -> Option<u32> {
     if let Some(config) = GAME_RES.avatar_configs.get(&avatar_id) {
         return Some(config.weakness_buff_id);
     }
+    // Characters newer than res.json. Opener buffs go by element: 1000111 Physical, 112 Fire,
+    // 113 Ice, 114 Lightning, 115 Wind, 116 Quantum, 117 Imaginary.
     match avatar_id {
         1503 => Some(1000113), // Pearl, Ice
+        1510 => Some(1000112), // Himeko Nova, Fire
+        1511 => Some(1000116), // Aha, Quantum
+        1512 => Some(1000115), // Robin (summer), Wind
+        1513 => Some(1000116), // Aventurine (Waveflair), Quantum
         _ => None,
     }
 }
@@ -203,7 +209,7 @@ async fn create_battle_info(
         };
 
         if let Some(avatar) = player.avatars.get(&avatar_id) {
-            let (battle_avatar, techs) = avatar.to_battle_avatar_proto(
+            let (mut battle_avatar, techs) = avatar.to_battle_avatar_proto(
                 *avatar_index,
                 player
                     .lightcones
@@ -236,6 +242,8 @@ async fn create_battle_info(
                 });
             }
 
+            // `IGDEHGIKFJA` in StarRail.proto: the ex rank id list (extra Eidolon), see EX_RANKS.
+            battle_avatar.igdehgikfja = player.ex_rank_ids(avatar.avatar_id);
             battle_info.battle_avatar_list.push(battle_avatar);
 
             // hardcoded march

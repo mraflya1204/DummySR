@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use crate::structs::{
     // AllowedLanguages,
-    avatar::{AvatarJson, MultiPathAvatar},
+    avatar::{AvatarJson, EX_RANKS, MultiPathAvatar},
     battle::{BattleConfig, EnemyOverride, PearlMode},
     lightcone::Lightcone,
     persistent::Persistent,
@@ -39,6 +39,8 @@ pub struct FreesrData {
     pub enemy_override: EnemyOverride,
     #[serde(skip_serializing, skip_deserializing)]
     pub pearl_mode: PearlMode,
+    #[serde(skip_serializing, skip_deserializing)]
+    pub ex_rank_off: Vec<u32>,
 }
 
 impl FreesrData {
@@ -58,8 +60,18 @@ impl FreesrData {
                     .iter()
                     .filter(|relic| relic.equip_avatar == avatar_id)
                     .collect(),
+                self.ex_rank_ids(avatar_id),
             ),
         )
+    }
+
+    /// Ex rank ids active for a character: its entry in `EX_RANKS`, unless switched off.
+    pub fn ex_rank_ids(&self, avatar_id: u32) -> Vec<u32> {
+        EX_RANKS
+            .iter()
+            .filter(|(id, _, _)| *id == avatar_id && !self.ex_rank_off.contains(id))
+            .map(|(_, ex_rank_id, _)| *ex_rank_id)
+            .collect()
     }
 }
 
@@ -89,6 +101,7 @@ impl FreesrData {
         freesr_data.enable_castorice_global = persistent.enable_castorice_global;
         freesr_data.enemy_override = persistent.enemy_override;
         freesr_data.pearl_mode = persistent.pearl_mode;
+        freesr_data.ex_rank_off = persistent.ex_rank_off;
         // freesr_data.game_language = persistent.game_language;
         // freesr_data.voice_langauge = persistent.voice_language;
 
@@ -157,6 +170,7 @@ impl FreesrData {
             enable_castorice_global: self.enable_castorice_global,
             enemy_override: self.enemy_override.clone(),
             pearl_mode: self.pearl_mode,
+            ex_rank_off: self.ex_rank_off.clone(),
             // game_language: self.game_language,
             // voice_language: self.voice_langauge,
         }) {

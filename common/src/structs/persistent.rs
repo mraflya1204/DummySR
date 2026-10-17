@@ -52,6 +52,9 @@ pub struct Persistent {
     pub enemy_override: EnemyOverride,
     #[serde(default)]
     pub pearl_mode: PearlMode,
+    /// Characters whose ex rank (extra Eidolon) is switched off. Empty means all on.
+    #[serde(default)]
+    pub ex_rank_off: Vec<u32>,
 }
 
 fn default_true() -> Option<bool> {
@@ -72,6 +75,7 @@ impl Default for Persistent {
             enable_castorice_global: Some(true),
             enemy_override: Default::default(),
             pearl_mode: Default::default(),
+            ex_rank_off: Default::default(),
         }
     }
 }
