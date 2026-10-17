@@ -19,7 +19,7 @@ pub async fn on_player_login_cs_req(
     res.server_timestamp_ms = util::cur_timestamp_ms();
     res.stamina = 240;
     res.basic_info = Some(PlayerBasicInfo {
-        nickname: String::from("RobinSR"),
+        nickname: String::from("DummySR"),
         level: 70,
         world_level: 6,
         stamina: 240,

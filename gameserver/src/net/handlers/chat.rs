@@ -11,7 +11,10 @@ use crate::{
 use super::*;
 
 const SERVER_UID: u32 = 727;
-const SERVER_HEAD_ICON: u32 = 201402;
+/// Name the Server friend shows under in the friend list and chat.
+const SERVER_NAME: &str = "DummySR";
+/// Profile picture of the Server friend: 200000 + character id (201401 = The Herta).
+const SERVER_HEAD_ICON: u32 = 201401;
 const SERVER_CHAT_BUBBLE_ID: u32 = 220005;
 const SERVER_CHAT_HISTORY: &[&str] = &[
     "'exrank {avatar_id/all} {on/off}' extra Eidolon for Jing Yuan, Dan Heng IL, Acheron ('exrank' lists them)",
@@ -43,7 +46,7 @@ pub async fn on_get_friend_list_info_cs_req(
     res: &mut GetFriendListInfoScRsp,
 ) {
     res.friend_list = vec![FriendSimpleInfo {
-        remark_name: String::from("RobinSR"),
+        remark_name: String::from(SERVER_NAME),
         player_info: Some(PlayerSimpleInfo {
             uid: SERVER_UID,
             platform: PlatformType::Pc.into(),

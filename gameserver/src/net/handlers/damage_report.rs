@@ -12,10 +12,20 @@ use proto::{BattleEndStatus, BattleStatistics};
 const AV_PER_DELAY_UNIT: f64 = 10.0;
 
 pub struct Report {
-    /// What the player sees.
+    /// The report, one line per item, for the console and `last_battle_stats.txt`.
     pub text: String,
     /// How the numbers were worked out, for the console and `last_battle_stats.txt`.
     pub notes: Vec<String>,
+}
+
+/// Goes between the report's lines in the in-game chat, which drops line breaks.
+const CHAT_SEPARATOR: &str = " | ";
+
+impl Report {
+    /// The report as one chat message: the lines joined with CHAT_SEPARATOR.
+    pub fn chat_text(&self) -> String {
+        self.text.lines().collect::<Vec<_>>().join(CHAT_SEPARATOR)
+    }
 }
 
 pub fn build(stats: &BattleStatistics, end_status: i32) -> Report {

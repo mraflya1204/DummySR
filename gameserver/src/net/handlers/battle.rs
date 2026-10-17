@@ -84,7 +84,7 @@ pub async fn on_pve_battle_result_cs_req(
 
     // Sent with the next heartbeat: a chat message that arrives while the client is still
     // leaving the battle doesn't show up.
-    session.queue_server_message(report.text);
+    session.queue_server_message(report.chat_text());
 }
 
 pub async fn on_scene_cast_skill_cs_req(

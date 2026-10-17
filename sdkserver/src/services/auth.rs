@@ -1,6 +1,9 @@
 use axum::Json;
 use serde_json::json;
 
+/// Account email shown in the game's account screens.
+const ACCOUNT_EMAIL: &str = "dummySR@xyz.com";
+
 pub const LOGIN_WITH_PASSWORD_ENDPOINT: &str = "/{product_name}/mdk/shield/api/login";
 pub const LOGIN_WITH_SESSION_TOKEN_ENDPOINT: &str = "/{product_name}/mdk/shield/api/verify";
 pub const GRANTER_LOGIN_VERIFICATION_ENDPOINT: &str =
@@ -15,7 +18,7 @@ pub async fn login_with_password() -> Json<serde_json::Value> {
     "data": {
         "account": {
             "area_code": "**",
-            "email": "ReversedRooms",
+            "email": ACCOUNT_EMAIL,
             "country": "RU",
             "is_email_verify": "1",
             "token": "mostsecuretokenever",
@@ -37,7 +40,7 @@ pub async fn login_with_session_token() -> Json<serde_json::Value> {
     "data": {
         "account": {
             "area_code": "**",
-            "email": "ReversedRooms",
+            "email": ACCOUNT_EMAIL,
             "country": "RU",
             "is_email_verify": "1",
             "token": "mostsecuretokenever",
@@ -97,7 +100,7 @@ pub async fn apn_login_with_password() -> Json<serde_json::Value> {
             "area_code": "**",
             "country": "US",
             "is_adult": 1,
-            "email": "motorized@wheel.chair"
+            "email": ACCOUNT_EMAIL
         }
     },
     "message": "OK",
@@ -122,7 +125,7 @@ pub async fn apn_veriy_token() -> Json<serde_json::Value> {
             "area_code": "**",
             "country": "US",
             "is_adult": 1,
-            "email": "motorized@wheel.chair"
+            "email": ACCOUNT_EMAIL
         }
     },
     "message": "OK",
