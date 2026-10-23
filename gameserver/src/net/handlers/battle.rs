@@ -576,5 +576,96 @@ async fn create_battle_info(
         });
     }
 
+    add_aha_help(&mut battle_info);
+
     battle_info
+}
+
+// VORACITY CORRUPTION (4.6 event "Wishpower UP! Down with Voracity!")
+/// Voracity Corruption, levels 1-3 (StageInvasionBuff.json; "Gluttony" in the game's names).
+const VORACITY_CORRUPTION_BUFFS: [u32; 3] = [3034001, 3034002, 3034003];
+/// Aha's Help, levels 1-3 (ActivityVoracityInvasionBuf.json): "Aha Be Useful", "Aha's Tiny Aid"
+/// and "Aha's Big Help". Lv. 3 gives all allies +300 ATK, +240 DEF, +600 Max HP, +12 SPD and
+/// +30% CRIT DMG in corrupted battles.
+const AHA_HELP_BUFFS: [u32; 3] = [3034011, 3034012, 3034013];
+/// Stages with Voracity Corruption and its level (StageInvasionConfig.json and
+/// StageInvasionRogueMonster.json, game version 4.6).
+const VORACITY_STAGES: &[(u32, u32)] = &[
+    (420503, 2),
+    (420504, 2),
+    (420533, 2),
+    (420534, 3),
+    (30125112, 2),
+    (30125121, 3),
+    (30126112, 2),
+    (30126123, 3),
+    (30324032, 2),
+    (30324042, 2),
+    (30325032, 2),
+    (30325042, 3),
+    (30509012, 2),
+    (30510011, 3),
+    (83000991, 3),
+    (83000992, 3),
+    (83000993, 3),
+    (83001901, 3),
+    (83001902, 3),
+    (83001903, 3),
+    (83004021, 3),
+    (83004051, 3),
+    (83004072, 3),
+    (83004082, 3),
+    (83004161, 3),
+    (83004181, 3),
+    (83004191, 3),
+    (83004201, 3),
+    (83012991, 3),
+    (83013991, 3),
+    (83014991, 3),
+    (83015991, 3),
+];
+
+/// Level of Voracity Corruption in a battle, if any: from a corruption buff in the battle (an
+/// SRTools blessing) or from a stage the game lists as corrupted.
+fn voracity_corruption_level(battle_info: &SceneBattleInfo) -> Option<(u32, &'static str)> {
+    let from_buff = battle_info
+        .buff_list
+        .iter()
+        .filter_map(|buff| {
+            VORACITY_CORRUPTION_BUFFS
+                .iter()
+                .position(|id| *id == buff.id)
+        })
+        .max()
+        .map(|i| (i as u32 + 1, "corruption buff"));
+    let from_stage = VORACITY_STAGES
+        .iter()
+        .find(|(stage, _)| *stage == battle_info.stage_id)
+        .map(|(_, level)| (*level, "stage"));
+    from_buff.or(from_stage)
+}
+
+/// Gives the team Aha's Help Lv. 3 in battles with Voracity Corruption, replacing a lower level
+/// if one is already there.
+fn add_aha_help(battle_info: &mut SceneBattleInfo) {
+    let Some((level, source)) = voracity_corruption_level(battle_info) else {
+        return;
+    };
+    let best = AHA_HELP_BUFFS[2];
+    battle_info
+        .buff_list
+        .retain(|buff| buff.id == best || !AHA_HELP_BUFFS.contains(&buff.id));
+    if battle_info.buff_list.iter().all(|buff| buff.id != best) {
+        battle_info.buff_list.push(BattleBuff {
+            id: best,
+            level: 1,
+            owner_index: u32::MAX,
+            wave_flag: u32::MAX,
+            target_index_list: Vec::with_capacity(0),
+            dynamic_values: HashMap::with_capacity(0),
+        });
+    }
+    tracing::info!(
+        "Voracity Corruption Lv. {level} (from the {source}): added Aha's Help Lv. 3 ({best})"
+    );
 }

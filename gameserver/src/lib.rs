@@ -7,7 +7,7 @@ mod util;
 use net::gateway::Gateway;
 
 /// Printed at startup so it's easy to tell which build is running.
-const DUMMYSR_BUILD: &str = "DummySR 2026-10-18 (quick team fix: empty replies)";
+const DUMMYSR_BUILD: &str = "DummySR 2026-10-23 (Aha's Help Lv. 3 vs Voracity Corruption)";
 
 pub async fn start_gameserver() -> Result<()> {
     tracing::info!("{DUMMYSR_BUILD}");
