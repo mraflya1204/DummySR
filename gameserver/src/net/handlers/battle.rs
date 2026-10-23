@@ -582,8 +582,10 @@ async fn create_battle_info(
 }
 
 // VORACITY CORRUPTION (4.6 event "Wishpower UP! Down with Voracity!")
-/// Voracity Corruption, levels 1-3 (StageInvasionBuff.json; "Gluttony" in the game's names).
-const VORACITY_CORRUPTION_BUFFS: [u32; 3] = [3034001, 3034002, 3034003];
+/// Voracity Corruption, levels 1-4 (StageInvasionBuff.json; "Gluttony" in the game's names).
+/// Levels 1-3 are from the 4.6 data. Level 4 arrives in 4.7; its ID 3034004 follows the pattern of
+/// the first three but isn't confirmed yet: check StageInvasionBuff.json from 4.7 (InvasionID 4).
+const VORACITY_CORRUPTION_BUFFS: [u32; 4] = [3034001, 3034002, 3034003, 3034004];
 /// Aha's Help, levels 1-3 (ActivityVoracityInvasionBuf.json): "Aha Be Useful", "Aha's Tiny Aid"
 /// and "Aha's Big Help". Lv. 3 gives all allies +300 ATK, +240 DEF, +600 Max HP, +12 SPD and
 /// +30% CRIT DMG in corrupted battles.
