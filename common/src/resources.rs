@@ -127,7 +127,21 @@ pub struct LevelOutputConfig {
     pub plane_type: u32,
     pub world_id: u32,
     pub sections: Vec<u32>,
+    #[serde(deserialize_with = "values_without_nulls")]
     pub saved_values: HashMap<String, i32>,
+}
+
+/// A few floors in the 4.7.51 res.json have null saved values (e.g. `"FSV_": null`); those
+/// are left out instead of failing to load the whole file.
+fn values_without_nulls<'de, D>(deserializer: D) -> Result<HashMap<String, i32>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let values = HashMap::<String, Option<i32>>::deserialize(deserializer)?;
+    Ok(values
+        .into_iter()
+        .filter_map(|(key, value)| Some((key, value?)))
+        .collect())
 }
 
 #[derive(Deserialize)]
@@ -148,5 +162,8 @@ pub struct JsonConfig {
 }
 
 pub static GAME_RES: LazyLock<JsonConfig> = LazyLock::new(|| {
-    serde_json::from_str::<JsonConfig>(&fs::read_to_string("res.json").unwrap()).unwrap()
+    let text =
+        fs::read_to_string("res.json").unwrap_or_else(|err| panic!("can't read res.json: {err}"));
+    serde_json::from_str::<JsonConfig>(&text)
+        .unwrap_or_else(|err| panic!("res.json doesn't match what the server expects: {err}"))
 });
