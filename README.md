@@ -1,6 +1,6 @@
 # A CERTAIN TURN BASED ANIME GAME EMULATOR
 
-## Supported Version: 4.6.5x
+## Supported Version: 4.7.5x
 
 ### Check ingame chat for added functionalities over base RobinSR
 

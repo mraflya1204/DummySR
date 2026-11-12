@@ -131,14 +131,16 @@ fn weakness_buff_id(avatar_id: u32) -> Option<u32> {
     if let Some(config) = GAME_RES.avatar_configs.get(&avatar_id) {
         return Some(config.weakness_buff_id);
     }
-    // Characters newer than res.json. Opener buffs go by element: 1000111 Physical, 112 Fire,
-    // 113 Ice, 114 Lightning, 115 Wind, 116 Quantum, 117 Imaginary.
+    // Characters res.json (4.7.51) has no opener for; elements from ppSR's AvatarConfigLD.json.
+    // Opener buffs go by element: 1000111 Physical, 112 Fire, 113 Ice, 114 Lightning, 115 Wind,
+    // 116 Quantum, 117 Imaginary.
     match avatar_id {
-        1503 => Some(1000113), // Pearl, Ice
-        1510 => Some(1000112), // Himeko Nova, Fire
-        1511 => Some(1000116), // Aha, Quantum
-        1512 => Some(1000115), // Robin (summer), Wind
-        1513 => Some(1000116), // Aventurine (Waveflair), Quantum
+        1014 => Some(1000115), // Saber, Wind
+        1015 => Some(1000116), // Archer, Quantum
+        1508 => Some(1000116), // Quantum
+        1509 => Some(1000114), // Lightning
+        1514 => Some(1000113), // Ice
+        1515 => Some(1000114), // Lightning
         _ => None,
     }
 }

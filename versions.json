@@ -124,5 +124,19 @@
     "ex_resource_url": "https://autopatchos.starrails.com/design_data/BetaLive/output_13532881_eb1de9bedabd_c74ab2513059ad",
     "lua_url": "https://autopatchos.starrails.com/lua/BetaLive/output_13493894_ec7d6d879305_8b2cfd39d6e545",
     "ifix_url": "https://autopatchos.starrails.com/ifix/BetaLive/output_13491130_ecfa51828143_4bd221b76c0d9a"
+  },
+  "OSBETAWin4.7.51": {
+    "asset_bundle_url": "https://autopatchos.starrails.com/asb/BetaLive/output_17100438_7492adb59c20_603efdb7d3ab04",
+    "asset_bundle_url_android": "https://autopatchos.starrails.com/asb/BetaLive/output_17099110_3acea2eecdaa_0e106ffdeb116a",
+    "ex_resource_url": "https://autopatchos.starrails.com/design_data/BetaLive/output_17128507_3d20951b6e6e_97ddbb06f4034e",
+    "lua_url": "https://autopatchos.starrails.com/lua/BetaLive/output_17099231_7f29317fb878_0101e96c57f397",
+    "ifix_url": "https://autopatchos.starrails.com/ifix/BetaLive/output_17102685_d829cc7a3a68_24b26c4cab34f0"
+  },
+  "OSBETAAndroid4.7.51": {
+    "asset_bundle_url": "https://autopatchos.starrails.com/asb/BetaLive/output_17100438_7492adb59c20_603efdb7d3ab04",
+    "asset_bundle_url_android": "https://autopatchos.starrails.com/asb/BetaLive/output_17099110_3acea2eecdaa_0e106ffdeb116a",
+    "ex_resource_url": "https://autopatchos.starrails.com/design_data/BetaLive/output_17128507_3d20951b6e6e_97ddbb06f4034e",
+    "lua_url": "https://autopatchos.starrails.com/lua/BetaLive/output_17099231_7f29317fb878_0101e96c57f397",
+    "ifix_url": "https://autopatchos.starrails.com/ifix/BetaLive/output_17102685_d829cc7a3a68_24b26c4cab34f0"
   }
 }
