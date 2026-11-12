@@ -11,3 +11,12 @@ pub trait CmdID {
         Self::CMD_ID
     }
 }
+
+/// Response CmdID and message name (without CsReq/ScRsp) for a request CmdID, when
+/// StarRail.proto defines both the request and its response.
+pub fn response_for(request_id: u16) -> Option<(u16, &'static str)> {
+    REQUEST_RESPONSE_PAIRS
+        .binary_search_by_key(&request_id, |(request, _, _)| *request)
+        .ok()
+        .map(|i| (REQUEST_RESPONSE_PAIRS[i].1, REQUEST_RESPONSE_PAIRS[i].2))
+}

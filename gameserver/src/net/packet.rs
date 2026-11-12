@@ -136,8 +136,9 @@ macro_rules! trait_handler {
                     )*
                     _ => {
                         // No handler, but the game is waiting for a reply: answer with an empty
-                        // response, as ppSR does (see cmd_fallback.rs).
-                        if let Some((response_id, name)) = super::cmd_fallback::response_for(cmd_id) {
+                        // response, as ppSR does. Any request whose response is in StarRail.proto
+                        // qualifies (see the DummySR section at the end of that file).
+                        if let Some((response_id, name)) = proto::response_for(cmd_id) {
                             tracing::info!(
                                 "No handler for {name}CsReq ({cmd_id}), sent an empty {name}ScRsp ({response_id})"
                             );

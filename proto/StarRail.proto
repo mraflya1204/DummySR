@@ -6190,3 +6190,51 @@ message CCHMHOONEGG {
 	uint32 OCJLBKDCKHL = 9;
 }
 
+
+// ---------------------------------------------------------------------------------------------
+// DummySR additions: messages RobinSR's proto leaves out.
+//
+// Requests the game waits on but the server has no handler for. They get an empty response
+// (see `response_for` in proto/src/lib.rs), which the game takes as "success, nothing to
+// show". Without one, the quick team menu loads forever. CmdIDs change with every game
+// version: when updating this file, carry this section over with that version's CmdIDs.
+// ---------------------------------------------------------------------------------------------
+
+// CmdID: 752
+message GetLineupAvatarDataCsReq {
+}
+
+// CmdID: 735
+message GetLineupAvatarDataScRsp {
+	repeated LineupAvatarData avatar_data_list = 1;
+	uint32 retcode = 10;
+}
+
+message LineupAvatarData {
+	AvatarType avatar_type = 4;
+	uint32 hp = 7;
+	uint32 id = 8;
+}
+
+// CmdID: 1466
+message SetClientPausedCsReq {
+	bool paused = 2;
+}
+
+// CmdID: 1490
+message SetClientPausedScRsp {
+	uint32 retcode = 3;
+	bool paused = 4;
+}
+
+// CmdID: 4190
+message GetUnreleasedBlockInfoCsReq {
+}
+
+// CmdID: 4112
+message GetUnreleasedBlockInfoScRsp {
+	int64 GCMOKMIEHDB = 1;
+	repeated uint32 KNKGIENCLJJ = 3;
+	repeated uint32 NJIIPBHBEDK = 13;
+	uint32 retcode = 14;
+}
