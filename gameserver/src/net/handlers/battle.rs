@@ -547,12 +547,16 @@ async fn create_battle_info(
 
     // Global buffs
     let (mut has_castorice_global_buff, mut has_silver_wolf_global_buff) = (false, false);
+    let mut has_aha_global_buff = false;
     for buff in &battle_info.buff_list {
         if buff.id == 140703 {
             has_castorice_global_buff = true;
         }
         if buff.id == 150602 {
             has_silver_wolf_global_buff = true;
+        }
+        if buff.id == AHA_GLOBAL_BUFF {
+            has_aha_global_buff = true;
         }
     }
 
@@ -578,10 +582,25 @@ async fn create_battle_info(
         });
     }
 
+    if !has_aha_global_buff && player.enable_aha_global.unwrap_or(true) {
+        battle_info.buff_list.push(BattleBuff {
+            id: AHA_GLOBAL_BUFF,
+            level: 1,
+            owner_index: u32::MAX,
+            wave_flag: u32::MAX,
+            target_index_list: Vec::with_capacity(0),
+            dynamic_values: HashMap::with_capacity(0),
+        });
+    }
+
     add_aha_help(&mut battle_info);
 
     battle_info
 }
+
+/// Aha's global passive (avatar 1511), from ppSR's persistent.json "global_passive" list next
+/// to Castorice's 140703 and Silver Wolf LV.999's 150602.
+const AHA_GLOBAL_BUFF: u32 = 151104;
 
 // VORACITY CORRUPTION (4.6 event "Wishpower UP! Down with Voracity!")
 /// Voracity Corruption, levels 1-4 (StageInvasionBuff.json; "Gluttony" in the game's names).

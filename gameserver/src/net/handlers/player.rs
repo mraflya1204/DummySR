@@ -177,6 +177,7 @@ pub async fn on_player_login_finish_cs_req(
     _req: &PlayerLoginFinishCsReq,
     _res: &mut PlayerLoginFinishScRsp,
 ) -> Result<()> {
+    // Content packages from ContentPackageConfig.json (4.7.51), all marked finished.
     session
         .send(ContentPackageSyncDataScNotify {
             data: Some(ContentPackageData {
@@ -185,7 +186,7 @@ pub async fn on_player_login_finish_cs_req(
                     200011, 200012, 150017, 150015, 150021, 150018, 130011, 130012, 130013, 150025,
                     140006, 150026, 130014, 150034, 150029, 150035, 150041, 150039, 150045, 150057,
                     150042, 150067, 150064, 150063, 150024, 171002, 150068, 150070, 150071, 150073,
-                    150074, 150075, 150076, 150077, 150078, 150079,
+                    150074, 150075, 150076, 150077, 150078, 150079, 200013, 150132, 150134,
                 ]
                 .into_iter()
                 .map(|v| ContentPackageInfo {

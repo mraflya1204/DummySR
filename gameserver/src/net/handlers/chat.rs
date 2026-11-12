@@ -24,6 +24,7 @@ const SERVER_CHAT_HISTORY: &[&str] = &[
     "'lua {path_to_lua_script}' execute lua script",
     "'sw {on/off}' enable/disable silver wolf global buff",
     "'castorice {on/off}' enable/disable castorice global buff",
+    "'aha {on/off}' enable/disable aha global buff",
     "'sync' to synchronize stats between json and in-game view",
     "'mc {mc_id}' mc_id can be set from 8001 to 8008",
     "'march {march_id}' march_id can be set 1001 or 1224",
@@ -150,7 +151,7 @@ pub async fn on_send_msg_cs_req(
                     .await
                     .unwrap();
             }
-            "sw" | "castorice" => {
+            "sw" | "castorice" | "aha" => {
                 let status = args.first().unwrap_or(&"on").to_lowercase();
                 let enabled = match status.as_str() {
                     "on" | "1" | "true" => true,
@@ -158,10 +159,10 @@ pub async fn on_send_msg_cs_req(
                     _ => true,
                 };
 
-                if cmd == "sw" {
-                    json.enable_sw_global = Some(enabled);
-                } else {
-                    json.enable_castorice_global = Some(enabled);
+                match cmd {
+                    "sw" => json.enable_sw_global = Some(enabled),
+                    "aha" => json.enable_aha_global = Some(enabled),
+                    _ => json.enable_castorice_global = Some(enabled),
                 }
 
                 json.save_persistent().await;
@@ -177,7 +178,11 @@ pub async fn on_send_msg_cs_req(
                         body.chat_type,
                         format!(
                             "{} Global Buff: {}",
-                            if cmd == "sw" { "SW" } else { "Castorice" },
+                            match cmd {
+                                "sw" => "SW",
+                                "aha" => "Aha",
+                                _ => "Castorice",
+                            },
                             if enabled { "Enabled" } else { "Disabled" }
                         ),
                     ))

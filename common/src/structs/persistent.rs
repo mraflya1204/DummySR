@@ -48,6 +48,8 @@ pub struct Persistent {
     pub enable_sw_global: Option<bool>,
     #[serde(default = "default_true")]
     pub enable_castorice_global: Option<bool>,
+    #[serde(default = "default_true")]
+    pub enable_aha_global: Option<bool>,
     #[serde(default)]
     pub enemy_override: EnemyOverride,
     #[serde(default)]
@@ -73,6 +75,7 @@ impl Default for Persistent {
             // voice_language: AllowedLanguages::Jp,
             enable_sw_global: Some(true),
             enable_castorice_global: Some(true),
+            enable_aha_global: Some(true),
             enemy_override: Default::default(),
             pearl_mode: Default::default(),
             ex_rank_off: Default::default(),

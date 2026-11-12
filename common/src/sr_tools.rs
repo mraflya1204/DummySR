@@ -36,6 +36,8 @@ pub struct FreesrData {
     #[serde(skip_serializing, skip_deserializing)]
     pub enable_castorice_global: Option<bool>,
     #[serde(skip_serializing, skip_deserializing)]
+    pub enable_aha_global: Option<bool>,
+    #[serde(skip_serializing, skip_deserializing)]
     pub enemy_override: EnemyOverride,
     #[serde(skip_serializing, skip_deserializing)]
     pub pearl_mode: PearlMode,
@@ -99,6 +101,7 @@ impl FreesrData {
         freesr_data.march_type = persistent.march_type;
         freesr_data.enable_sw_global = persistent.enable_sw_global;
         freesr_data.enable_castorice_global = persistent.enable_castorice_global;
+        freesr_data.enable_aha_global = persistent.enable_aha_global;
         freesr_data.enemy_override = persistent.enemy_override;
         freesr_data.pearl_mode = persistent.pearl_mode;
         freesr_data.ex_rank_off = persistent.ex_rank_off;
@@ -168,6 +171,7 @@ impl FreesrData {
             march_type: self.march_type,
             enable_sw_global: self.enable_sw_global,
             enable_castorice_global: self.enable_castorice_global,
+            enable_aha_global: self.enable_aha_global,
             enemy_override: self.enemy_override.clone(),
             pearl_mode: self.pearl_mode,
             ex_rank_off: self.ex_rank_off.clone(),
