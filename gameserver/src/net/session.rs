@@ -4,6 +4,7 @@ use std::{
     pin::Pin,
     sync::{Arc, OnceLock},
     task::{Context, Poll},
+    time::Duration,
 };
 
 use anyhow::Result;
@@ -29,7 +30,8 @@ struct RemoteEndPoint {
 pub struct PlayerSession {
     pub token: u32,
     kcp: Arc<Mutex<Kcp<RemoteEndPoint>>>,
-    start_time: u64,
+    /// Session start, in milliseconds since the Unix epoch. KCP's clock counts from here.
+    start_time_ms: u64,
     pub shutdown_tx: watch::Sender<()>,
     pub shutdown_rx: watch::Receiver<()>,
     pub json_data: OnceLock<FreesrData>,
@@ -56,7 +58,7 @@ impl PlayerSession {
                 false,
                 RemoteEndPoint { socket, addr },
             ))),
-            start_time: util::cur_timestamp_secs(),
+            start_time_ms: util::cur_timestamp_ms(),
             json_data: OnceLock::new(),
             shutdown_rx,
             shutdown_tx,
@@ -231,9 +233,49 @@ impl PlayerSession {
         self.pending_server_messages.push(text);
     }
 
+    /// KCP's clock: milliseconds since the session started. KCP's timers (retransmission after
+    /// 100-200 ms, window probes after 7 s) are in milliseconds; this used to count seconds, so a
+    /// single lost UDP packet took minutes to resend and the game appeared to hang.
     fn session_time(&self) -> u64 {
-        util::cur_timestamp_secs() - self.start_time
+        kcp_clock(self.start_time_ms)
     }
+
+    /// Runs KCP's update every 10 ms until the session shuts down. KCP only resends lost packets
+    /// from update, which otherwise only ran when the client sent something.
+    pub fn start_kcp_timer(&self) {
+        let kcp = self.kcp.clone();
+        let start_time_ms = self.start_time_ms;
+        let mut shutdown_rx = self.shutdown_rx.clone();
+
+        tokio::spawn(async move {
+            let mut tick = tokio::time::interval(KCP_TIMER_INTERVAL);
+            tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            let mut failing = false;
+            loop {
+                tokio::select! {
+                    _ = tick.tick() => {
+                        let mut kcp = kcp.lock().await;
+                        match kcp.async_update(kcp_clock(start_time_ms) as u32).await {
+                            // log once per run of failures, not every 10 ms
+                            Err(err) if !failing => {
+                                tracing::warn!("KCP update failed: {err}");
+                                failing = true;
+                            }
+                            Err(_) => {}
+                            Ok(()) => failing = false,
+                        }
+                    }
+                    _ = shutdown_rx.changed() => break,
+                }
+            }
+        });
+    }
+}
+
+const KCP_TIMER_INTERVAL: Duration = Duration::from_millis(10);
+
+fn kcp_clock(start_time_ms: u64) -> u64 {
+    util::cur_timestamp_ms().saturating_sub(start_time_ms)
 }
 
 // Auto implemented

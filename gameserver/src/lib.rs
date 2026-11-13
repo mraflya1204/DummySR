@@ -7,7 +7,7 @@ mod util;
 use net::gateway::Gateway;
 
 /// Printed at startup so it's easy to tell which build is running.
-const DUMMYSR_BUILD: &str = "DummySR 2026-11-13 (game version 4.7.51, res.json fix)";
+const DUMMYSR_BUILD: &str = "DummySR 2026-11-13 (KCP timing fix)";
 
 pub async fn start_gameserver() -> Result<()> {
     tracing::info!("{DUMMYSR_BUILD}");

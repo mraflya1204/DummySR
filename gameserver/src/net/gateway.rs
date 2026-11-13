@@ -84,6 +84,7 @@ impl Gateway {
             conv_id,
             session_token,
         )));
+        session.read().await.start_kcp_timer();
 
         // Init the json to session
         if let Ok(data) = FreesrData::load().await {
